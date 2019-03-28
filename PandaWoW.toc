@@ -1,0 +1,7 @@
+## Interface: 50400
+## Title: PandaWoW
+## Version: 1.0
+## SavedVariablesPerCharacter: IsCrossChecked
+
+CrossFactionBG.xml
+Transmogrification.lua
