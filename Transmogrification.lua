@@ -1,8 +1,13 @@
-local customEnabled = true;
+PandaWoWCommandLib = commandLib
+assert(PandaWoWCommandLib)
+
+Transmogrication = {};
+
+local customEnabled = nil;
 
 LoadAddOn("Blizzard_ItemAlterationUI");
 
-local bor, band, lshift = bit.bor, bit.band, bit.lshift;
+local bor, lshift = bit.bor, bit.lshift;
 local NUM_BAG_SLOTS, BACKPACK_CONTAINER, BANK_CONTAINER = _G.NUM_BAG_SLOTS, _G.BACKPACK_CONTAINER, _G.BANK_CONTAINER;
 local ITEM_QUALITY_LEGENDARY = ITEM_QUALITY_LEGENDARY;
 
@@ -121,3 +126,7 @@ end)
 hooksecurefunc('TransmogrifyFrame_UpdateApplyButton', function()
     --MoneyFrame_Update("TransmogrifyMoneyFrame", 111111);
 end)
+
+function Transmogrication.LoadInfo()
+    PandaWoWCommandLib:DoCommand("checktransmog", function(s, o)if o[1] == "enabled" then customEnabled = true; end end);
+end
