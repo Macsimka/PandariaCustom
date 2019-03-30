@@ -5,8 +5,6 @@ Transmogrication = {};
 
 local customEnabled = nil;
 
-LoadAddOn("Blizzard_ItemAlterationUI");
-
 local bor, lshift = bit.bor, bit.lshift;
 local NUM_BAG_SLOTS, BACKPACK_CONTAINER, BANK_CONTAINER = _G.NUM_BAG_SLOTS, _G.BACKPACK_CONTAINER, _G.BANK_CONTAINER;
 local ITEM_QUALITY_LEGENDARY = ITEM_QUALITY_LEGENDARY;
@@ -23,7 +21,10 @@ local equipLocation =
     INVTYPE_WRIST		= 9,
     INVTYPE_HAND		= 10,
     INVTYPE_BACK		= 15,
+    
     INVTYPE_MAINHAND	= 16,
+    INVTYPE_2HWEAPON    = 16,
+    
     INVTYPE_OFFHAND		= 17,
     INVTYPE_RANGED		= 18,
 };
@@ -76,8 +77,8 @@ local function AddEquippableItem(useTable, inventorySlot, container, slot)
 
 	local location = PackInventoryLocation(container, slot, isPlayer, isBank, isBags);
     
-	local _, _, _, _, _, _, subClass, _, equipSlot = GetItemInfo(link)
-    
+	local _, _, _, _, _, _, _, _, equipSlot = GetItemInfo(link)
+
     if equipLocation[equipSlot] == inventorySlot and useTable[location] == nil then
         useTable[location] = itemID;
 	end
@@ -113,18 +114,21 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
         end
     else
         for location, itemId in pairs(useTable) do
-            local _, _, itemRarity, _, _, _, itemSubClass  = GetItemInfo(itemId);
+            local _, _, itemRarity, _, _, _, itemSubClass, _, equipSlot  = GetItemInfo(itemId);
             
-            if itemRarity == ITEM_QUALITY_LEGENDARY or (mainItemSubClass ~= itemSubClass
-                and mies ~= "INVTYPE_2HWEAPON" and mies ~= "INVTYPE_WEAPONMAINHAND" and mies ~= "INVTYPE_WEAPONOFFHAND" and mies ~= "INVTYPE_HOLDABLE" and mies ~= "INVTYPE_RANGED" and mies ~= "INVTYPE_RANGEDRIGHT") then
+            if itemRarity == ITEM_QUALITY_LEGENDARY then
                 useTable[location] = nil;
             end
         end
     end
-end)
-
-hooksecurefunc('TransmogrifyFrame_UpdateApplyButton', function()
-    --MoneyFrame_Update("TransmogrifyMoneyFrame", 111111);
+    
+    for location, itemId in pairs(useTable) do
+        local _, _, itemRarity, _, _, _, itemSubClass, _, equipSlot  = GetItemInfo(itemId);
+            
+        if mainItemSubClass ~= itemSubClass and mies ~= equipSlot then
+            useTable[location] = nil;
+        end
+    end
 end)
 
 function Transmogrication.LoadInfo()
