@@ -5,9 +5,18 @@ Transmogrication = {};
 
 local customEnabled = nil;
 
+local _G = _G
+local GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo = 
+      GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo
 local bor, lshift = bit.bor, bit.lshift;
 local NUM_BAG_SLOTS, BACKPACK_CONTAINER, BANK_CONTAINER = _G.NUM_BAG_SLOTS, _G.BACKPACK_CONTAINER, _G.BANK_CONTAINER;
-local ITEM_QUALITY_LEGENDARY = ITEM_QUALITY_LEGENDARY;
+
+local VOID_CONTAINER = -3
+
+-- en locale: "Quests","Quest", ru locale: "Задание","Задания" :\
+local QUESTS_LABEL, BATTLE_PET_SOURCE_2 = _G.QUESTS_LABEL, _G.BATTLE_PET_SOURCE_2
+
+local ITEM_QUALITY_LEGENDARY = _G.ITEM_QUALITY_LEGENDARY;
 
 local equipLocation =
 {
@@ -15,17 +24,23 @@ local equipLocation =
     INVTYPE_SHOULDER	= 3,
     INVTYPE_BODY		= 4,
     INVTYPE_CHEST		= 5,
+    INVTYPE_ROBE		= 5,
     INVTYPE_WAIST		= 6,
     INVTYPE_LEGS		= 7,
     INVTYPE_FEET		= 8,
     INVTYPE_WRIST		= 9,
     INVTYPE_HAND		= 10,
-    INVTYPE_BACK		= 15,
+    INVTYPE_CLOAK       = 15, -- INVTYPE_BACK
     
+    INVTYPE_WEAPON      = 16,
+    INVTYPE_WEAPONMAINHAND = 16,
     INVTYPE_MAINHAND	= 16,
     INVTYPE_2HWEAPON    = 16,
     
+    INVTYPE_WEAPONOFFHAND = 17,
     INVTYPE_OFFHAND		= 17,
+    INVTYPE_HOLDABLE    = 17,
+    INVTYPE_SHIELD      = 17,
     INVTYPE_RANGED		= 18,
 };
 
@@ -57,7 +72,7 @@ function PackInventoryLocation(container, slot, equipment, bank, bags, voidStora
 	end
 
     -- TODO: FIX BANK!!
-    if bank and not bags then
+    if bank and not bags and not voidStorage then
         location = location + 39;
     end
 
@@ -65,20 +80,28 @@ function PackInventoryLocation(container, slot, equipment, bank, bags, voidStora
 end
 
 local function AddEquippableItem(useTable, inventorySlot, container, slot)
-    local itemID = GetContainerItemID(container, slot)
-	local link   = GetContainerItemLink(container, slot)
-        
+    local itemID, link, _
+    if container == VOID_CONTAINER then
+        _, link = GetItemInfo(GetVoidItemInfo(slot))
+        itemID = tostring(string.match(link,"item:([%-?%d]+)")) -- extract ID from link
+    else
+        itemID = GetContainerItemID(container, slot)
+        link   = GetContainerItemLink(container, slot)
+    end
+
     if not link then return end
     
 	local isBags   = container >= BACKPACK_CONTAINER and container <= NUM_BAG_SLOTS + _G.NUM_BANKBAGSLOTS
 	local isBank   = container == BANK_CONTAINER or (isBags and container > NUM_BAG_SLOTS)
-	local isPlayer = not isBank
+    local isVoid   = container == VOID_CONTAINER
+	local isPlayer = not isBank and not isVoid
 	if not isBags then container = nil end
 
-	local location = PackInventoryLocation(container, slot, isPlayer, isBank, isBags);
-    
-	local _, _, _, _, _, _, _, _, equipSlot = GetItemInfo(link)
+	local _, _, _, _, _, itemClass, _, _, equipSlot = GetItemInfo(link)
+    if itemClass == BATTLE_PET_SOURCE_2 or itemClass == QUESTS_LABEL then return end -- en/ru
 
+	local location = PackInventoryLocation(container, slot, isPlayer, isBank, isBags, isVoid);
+    
     if equipLocation[equipSlot] == inventorySlot and useTable[location] == nil then
         useTable[location] = itemID;
 	end
@@ -86,10 +109,12 @@ end
 
 hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, transmog)
     if transmog == nil then return end
+    local invItemId = GetInventoryItemID("player", inventorySlot)
+    if not invItemId then return end
+
+    local _, _, _, _, _, mainItemClass, _, _, mies = GetItemInfo(invItemId);
     
-    local _, _, _, _, _, _, mainItemSubClass, _, mies = GetItemInfo(GetInventoryItemID("player", inventorySlot));
-    
-    if mainItemSubClass == nil then return end
+    if mainItemClass == nil then return end
     
     if customEnabled == true then
         for container = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
@@ -112,9 +137,16 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
                 AddEquippableItem(useTable, inventorySlot, container, slot)
             end
         end
+        
+        -- scan void
+        for voidSlot = 1, 80 do -- VOID_STORAGE_MAX
+            if GetVoidItemInfo(voidSlot) then
+                AddEquippableItem(useTable, inventorySlot, VOID_CONTAINER, voidSlot)
+            end
+        end
     else
         for location, itemId in pairs(useTable) do
-            local _, _, itemRarity, _, _, _, itemSubClass, _, equipSlot  = GetItemInfo(itemId);
+            local _, _, itemRarity = GetItemInfo(itemId);
             
             if itemRarity == ITEM_QUALITY_LEGENDARY then
                 useTable[location] = nil;
@@ -123,9 +155,17 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
     end
     
     for location, itemId in pairs(useTable) do
-        local _, _, itemRarity, _, _, _, itemSubClass, _, equipSlot  = GetItemInfo(itemId);
-            
-        if mainItemSubClass ~= itemSubClass and mies ~= equipSlot then
+        local _, _, _, _, _, itemClass, _, _, equipSlot  = GetItemInfo(itemId);
+        
+        -- Allow robes trans into chests and vice versa
+        if mies == "INVTYPE_ROBE" and equipSlot == "INVTYPE_CHEST" then
+            equipSlot = "INVTYPE_ROBE"
+        elseif mies == "INVTYPE_CHEST" and equipSlot == "INVTYPE_ROBE" then
+            equipSlot = "INVTYPE_CHEST"
+        end
+
+        if itemClass == BATTLE_PET_SOURCE_2 or itemClass == QUESTS_LABEL or -- en/ru
+           (mies ~= equipSlot) then
             useTable[location] = nil;
         end
     end
