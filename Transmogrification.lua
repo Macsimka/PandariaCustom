@@ -26,12 +26,13 @@ local ITEM_QUALITY_LEGENDARY = _G.ITEM_QUALITY_LEGENDARY;
     daggers     = 1180, fists       = 15590,
     bows        = 264,  crossbows   = 5011, guns = 266,}]]
 local cloth, leather, mail, plate
-local oneHaxes, twoHaxes, polearms, staves, oneHmaces, twoHmaces, oneHswords, twoHswords, daggers, fists, shields =
+local oneHaxes, twoHaxes, polearms, staves, oneHmaces, twoHmaces, oneHswords, twoHswords, daggers, fists, shields, bows, crossbows, guns =
 GetSpellInfo(196), GetSpellInfo(197), GetSpellInfo(200), GetSpellInfo(227), GetSpellInfo(198), GetSpellInfo(199), 
-GetSpellInfo(201), GetSpellInfo(202), GetSpellInfo(1180), GetSpellInfo(15590), GetSpellInfo(9116)
+GetSpellInfo(201), GetSpellInfo(202), GetSpellInfo(1180), GetSpellInfo(15590), GetSpellInfo(9116), GetSpellInfo(264), GetSpellInfo(5011), GetSpellInfo(266)
 if GetLocale() == "ruRU" then
     polearms = "Древковое"; oneHmaces = "Одноручное дробящее"; twoHmaces = "Двуручное дробящее"
     cloth = "Тканевые"; leather = "Кожаные"; mail = "Кольчужные"; plate = "Латные"; fists = "Кистевое"
+    guns = "Огнестрельное"
 else -- only enUS/enGB yet...
     cloth = "Cloth"; leather = "Leather"; mail = "Mail"; plate = "Plate"
 end
@@ -175,6 +176,7 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
         end
         playerClass = playerClass:lower()
         for location, itemId in pairs(useTable) do
+            if itemId == invItemId then useTable[location] = nil; end
             local _, link, itemRarity, _, _, _, itemSubClass, _, equipSlot = GetItemInfo(itemId);
 
             -- We need to check tooltip of items to tmog if we are able to wear
@@ -201,12 +203,8 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
               or mainItemSubClass == leather and (itemSubClass ~= mainItemSubClass)
               or mainItemSubClass == daggers and (itemSubClass ~= mainItemSubClass)
               or mainItemSubClass == fists and (itemSubClass ~= mainItemSubClass)
-              or mainItemSubClass == oneHswords and (itemSubClass == twoHmaces or itemSubClass == twoHaxes or itemSubClass == twoHswords)
-              or mainItemSubClass == twoHswords and (itemSubClass == oneHmaces or itemSubClass == oneHaxes or itemSubClass == oneHswords)
-              or mainItemSubClass == oneHaxes and (itemSubClass == twoHmaces or itemSubClass == twoHaxes or itemSubClass == twoHswords)
-              or mainItemSubClass == twoHaxes and (itemSubClass == oneHmaces or itemSubClass == oneHaxes or itemSubClass == oneHswords)
-              or mainItemSubClass == oneHmaces and (itemSubClass == twoHmaces or itemSubClass == twoHaxes or itemSubClass == twoHswords)
-              or mainItemSubClass == twoHmaces and (itemSubClass == oneHmaces or itemSubClass == oneHaxes or itemSubClass == oneHswords))
+              or (mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces) and (itemSubClass == twoHmaces or itemSubClass == twoHaxes or itemSubClass == twoHswords or itemSubClass == daggers or itemSubClass == fists)
+              or (mainItemSubClass == guns or mainItemSubClass == bows or mainItemSubClass == crossbows) and (itemSubClass ~= guns and itemSubClass ~= bows and itemSubClass ~= crossbows))
               or itemRarity == ITEM_QUALITY_LEGENDARY then
                 useTable[location] = nil;
             end
