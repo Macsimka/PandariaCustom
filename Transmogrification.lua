@@ -130,9 +130,9 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
     local invItemId = GetInventoryItemID("player", inventorySlot)
     if not invItemId then return end
 
-    local _, _, _, _, _, mainItemClass, mainItemSubClass, _, mies = GetItemInfo(invItemId);
+    local _, _, _, _, _, _, mainItemSubClass, _, mies = GetItemInfo(invItemId);
 
-    if mainItemClass == nil then return end
+    if mainItemSubClass == nil then return end
 
     for container = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
         for slot = 1, GetContainerNumSlots(container) do
@@ -163,10 +163,19 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
     end
 
     if not customEnabled then
-        local _, playerClass = UnitClass"player"
+        local playerClass = UnitClass"player"
+        if GetLocale() == "ruRU" then
+            if playerClass == "Шаманка" then playerClass = "Шаман"
+            elseif playerClass == "Жрица" then playerClass = "Жрец"
+            elseif playerClass == "Охотница" then playerClass = "Охотник"
+            elseif playerClass == "Разбойница" then playerClass = "Разбойник"
+            elseif playerClass == "Чернокнижница" then playerClass = "Чернокнижник"
+            elseif playerClass == "Монахиня" then playerClass = "Монах"
+            end
+        end
         playerClass = playerClass:lower()
         for location, itemId in pairs(useTable) do
-            local _, link, itemRarity, _, _, _, itemSubClass = GetItemInfo(itemId);
+            local _, link, itemRarity, _, _, _, itemSubClass, _, equipSlot = GetItemInfo(itemId);
 
             -- We need to check tooltip of items to tmog if we are able to wear
             --i.e it will hide armor from another classes but will show weapons that are unable to wear
@@ -174,24 +183,24 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             GameTooltip:SetHyperlink(link)
             for i=1, GameTooltip:NumLines()do
                 local tooltipText = _G['GameTooltipTextLeft' .. i]:GetText():lower()
-                local _, _, class1, class2, class3, class4 = string.find(tooltipText,string.gsub(ITEM_CLASSES_ALLOWED:lower(), "%%s", "([^,+]+),? ?([^,+]+),? ?([^,+]+),? ?([^,+]+)")) -- crappy and limited regex but it works
+                -- crappy and limited regex but it works
+                local _, _, class1, class2, class3, class4 = string.find(tooltipText,string.gsub(ITEM_CLASSES_ALLOWED:lower(), "%%s", "([^,+]+),? ?([^,+]+),? ?([^,+]+),? ?([^,+]+)"))
 
                 if (class1 and class1 ~= playerClass)
                 or (class2 and class2 ~= playerClass)
                 or (class3 and class3 ~= playerClass)
-                or (class4 and class4 ~= playerClass)
-                then
+                or (class4 and class4 ~= playerClass) then
                     useTable[location] = nil;
                 end
             end
             GameTooltip:Hide()
 
             -- Hide lower armor type items and legendary items
-            if (mainItemSubClass == plate and itemSubClass ~= mainItemSubClass
-              or mainItemSubClass == mail and itemSubClass ~= mainItemSubClass
-              or mainItemSubClass == leather and itemSubClass ~= mainItemSubClass
-              or mainItemSubClass == daggers and itemSubClass ~= mainItemSubClass
-              or mainItemSubClass == fists and itemSubClass ~= mainItemSubClass
+            if (mainItemSubClass == plate and (itemSubClass ~= mainItemSubClass)
+              or mainItemSubClass == mail and (itemSubClass ~= mainItemSubClass)
+              or mainItemSubClass == leather and (itemSubClass ~= mainItemSubClass)
+              or mainItemSubClass == daggers and (itemSubClass ~= mainItemSubClass)
+              or mainItemSubClass == fists and (itemSubClass ~= mainItemSubClass)
               or mainItemSubClass == oneHswords and (itemSubClass == twoHmaces or itemSubClass == twoHaxes or itemSubClass == twoHswords)
               or mainItemSubClass == twoHswords and (itemSubClass == oneHmaces or itemSubClass == oneHaxes or itemSubClass == oneHswords)
               or mainItemSubClass == oneHaxes and (itemSubClass == twoHmaces or itemSubClass == twoHaxes or itemSubClass == twoHswords)
@@ -202,65 +211,65 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
                 useTable[location] = nil;
             end
         end
-    end
+    else
+        for location, itemId in pairs(useTable) do
+            if itemId == invItemId then useTable[location] = nil; end
+            local _, _, _, _, _, _, itemSubClass, _, equipSlot = GetItemInfo(itemId);
 
-    for location, itemId in pairs(useTable) do
-        if itemId == invItemId then useTable[location] = nil; end
-        local _, _, _, _, _, itemClass, itemSubClass, _, equipSlot = GetItemInfo(itemId);
+            -- Allow robes trans into chests and vice versa
+            if mies == "INVTYPE_ROBE" and equipSlot == "INVTYPE_CHEST" then
+                equipSlot = "INVTYPE_ROBE"
+            elseif mies == "INVTYPE_CHEST" and equipSlot == "INVTYPE_ROBE" then
+                equipSlot = "INVTYPE_CHEST"
+            -- Allow bows trans into crossbows/guns and vice versa
+            elseif mies == "INVTYPE_RANGED" and equipSlot == "INVTYPE_RANGEDRIGHT" then
+                equipSlot = "INVTYPE_RANGED"
+            elseif mies == "INVTYPE_RANGEDRIGHT" and equipSlot == "INVTYPE_RANGED" then
+                equipSlot = "INVTYPE_RANGEDRIGHT"
+            -- Allow 1H -> 2H
+            elseif mies == "INVTYPE_WEAPON" and equipSlot == "INVTYPE_2HWEAPON" then
+                equipSlot = "INVTYPE_WEAPON"
+            elseif mies == "INVTYPE_2HWEAPON" and equipSlot == "INVTYPE_WEAPON" then
+                equipSlot = "INVTYPE_2HWEAPON"
+            -- Allow main hands trans into one hands and vice versa
+            elseif mies == "INVTYPE_WEAPON" and equipSlot == "INVTYPE_WEAPONMAINHAND" then
+                equipSlot = "INVTYPE_WEAPON"
+            elseif mies == "INVTYPE_WEAPONMAINHAND" and equipSlot == "INVTYPE_WEAPON" then
+                equipSlot = "INVTYPE_WEAPONMAINHAND"
+            -- Allow offhands trans into shields and vice versa
+            elseif mies == "INVTYPE_HOLDABLE" and equipSlot == "INVTYPE_SHIELD" then
+                equipSlot = "INVTYPE_HOLDABLE"
+            elseif mies == "INVTYPE_SHIELD" and equipSlot == "INVTYPE_HOLDABLE" then
+                equipSlot = "INVTYPE_SHIELD"
+            end
 
-        -- Allow robes trans into chests and vice versa
-        if mies == "INVTYPE_ROBE" and equipSlot == "INVTYPE_CHEST" then
-            equipSlot = "INVTYPE_ROBE"
-        elseif mies == "INVTYPE_CHEST" and equipSlot == "INVTYPE_ROBE" then
-            equipSlot = "INVTYPE_CHEST"
-        -- Allow bows trans into crossbows/guns and vice versa
-        elseif mies == "INVTYPE_RANGED" and equipSlot == "INVTYPE_RANGEDRIGHT" then
-            equipSlot = "INVTYPE_RANGED"
-        elseif mies == "INVTYPE_RANGEDRIGHT" and equipSlot == "INVTYPE_RANGED" then
-            equipSlot = "INVTYPE_RANGEDRIGHT"
-        -- Allow 1H -> 2H
-        elseif mies == "INVTYPE_WEAPON" and equipSlot == "INVTYPE_2HWEAPON" then
-            equipSlot = "INVTYPE_WEAPON"
-        elseif mies == "INVTYPE_2HWEAPON" and equipSlot == "INVTYPE_WEAPON" then
-            equipSlot = "INVTYPE_2HWEAPON"
-        -- Allow main hands trans into one hands and vice versa
-        elseif mies == "INVTYPE_WEAPON" and equipSlot == "INVTYPE_WEAPONMAINHAND" then
-            equipSlot = "INVTYPE_WEAPON"
-        elseif mies == "INVTYPE_WEAPONMAINHAND" and equipSlot == "INVTYPE_WEAPON" then
-            equipSlot = "INVTYPE_WEAPONMAINHAND"
-        -- Allow offhands trans into shields and vice versa
-        elseif mies == "INVTYPE_HOLDABLE" and equipSlot == "INVTYPE_SHIELD" then
-            equipSlot = "INVTYPE_HOLDABLE"
-        elseif mies == "INVTYPE_SHIELD" and equipSlot == "INVTYPE_HOLDABLE" then
-            equipSlot = "INVTYPE_SHIELD"
-        end
+            -- Hide weapons that not allowed to tmog
+            -- polearms/staves -> staves/polearms
+            if (mainItemSubClass == polearms or mainItemSubClass == staves)
+              and itemSubClass ~= staves and itemSubClass ~= polearms then
+                useTable[location] = nil;
+            -- daggers/fists -> 1h
+            elseif (mainItemSubClass == daggers or mainItemSubClass == fists)
+              and itemSubClass ~= oneHswords and itemSubClass ~= oneHaxes and itemSubClass ~= oneHmaces
+              and itemSubClass ~= daggers and itemSubClass ~= fists then
+                useTable[location] = nil;
+            -- 2h NOT ALLOWED TO daggers/fists
+            elseif (mainItemSubClass == twoHswords or mainItemSubClass == twoHaxes or mainItemSubClass == twoHmaces)
+              and itemSubClass == daggers or itemSubClass == fists then
+                useTable[location] = nil;
+            -- 1h/2h > 1h/2h
+            elseif (mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces 
+             or mainItemSubClass == twoHswords or mainItemSubClass == twoHaxes or mainItemSubClass == twoHmaces)
+              and itemSubClass ~= twoHswords and itemSubClass ~= twoHaxes and itemSubClass ~= twoHmaces
+              and itemSubClass ~= oneHswords and itemSubClass ~= oneHaxes and itemSubClass ~= oneHmaces
+              and itemSubClass ~= daggers and itemSubClass ~= fists then
+                useTable[location] = nil;
+            end
 
-        -- Hide weapons that not allowed to tmog
-        -- polearms/staves -> staves/polearms
-        if (mainItemSubClass == polearms or mainItemSubClass == staves)
-          and itemSubClass ~= staves and itemSubClass ~= polearms then
-            useTable[location] = nil;
-        -- daggers/fists -> 1h
-        elseif (mainItemSubClass == daggers or mainItemSubClass == fists)
-          and itemSubClass ~= oneHswords and itemSubClass ~= oneHaxes and itemSubClass ~= oneHmaces
-          and itemSubClass ~= daggers and itemSubClass ~= fists then
-            useTable[location] = nil;
-        -- 2h NOT ALLOWED TO daggers/fists
-        elseif (mainItemSubClass == twoHswords or mainItemSubClass == twoHaxes or mainItemSubClass == twoHmaces)
-          and itemSubClass == daggers or itemSubClass == fists then
-            useTable[location] = nil;
-        -- 1h/2h > 1h/2h
-        elseif (mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces 
-         or mainItemSubClass == twoHswords or mainItemSubClass == twoHaxes or mainItemSubClass == twoHmaces)
-          and itemSubClass ~= twoHswords and itemSubClass ~= twoHaxes and itemSubClass ~= twoHmaces
-          and itemSubClass ~= oneHswords and itemSubClass ~= oneHaxes and itemSubClass ~= oneHmaces
-          and itemSubClass ~= daggers and itemSubClass ~= fists then
-            useTable[location] = nil;
-        end
-
-        if (itemClass == BATTLE_PET_SOURCE_2 or itemClass == QUESTS_LABEL) or -- en/ru
-        mies ~= equipSlot then
-            useTable[location] = nil;
+            if (itemSubClass == BATTLE_PET_SOURCE_2 or itemSubClass == QUESTS_LABEL) or -- en/ru
+            mies ~= equipSlot then
+                useTable[location] = nil;
+            end
         end
     end
 end)
