@@ -209,6 +209,7 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
                     end
                     classes = {c1, c2, c3, c4, c5, c6, c7}
                     for j, k in pairs(classes) do
+                        k = gsub(k,'^ ?(.*)','%1')
                         if k == playerClass then break end
                         if j == #classes then useTable[location] = nil; end
                     end
