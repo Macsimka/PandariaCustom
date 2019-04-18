@@ -194,8 +194,9 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
                 if classes then
                     local c, c1, c2, c3, c4, c5, c6, c7 = 0, "", "", "", "", "", "", ""
                     for j = 1, #classes do
-                        local chr = strsub(classes, j, j)
-                        if chr~="," and chr~=" " then
+                        local chr = strsub(classes, j, j+1)
+                        if chr~=", " then
+                            chr = strsub(classes, j, j)
                             if c==0 then c1=c1 .. chr
                             elseif c==1 then c2=c2 .. chr
                             elseif c==2 then c3=c3 .. chr
@@ -204,9 +205,9 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
                             elseif c==5 then c6=c6 .. chr
                             elseif c==6 then c7=c7 .. chr
                             end
-                        elseif chr=="," then c=c+1 end
+                        else c=c+1 end
                     end
-                    local classes = {c1, c2, c3, c4, c5, c6, c7}
+                    classes = {c1, c2, c3, c4, c5, c6, c7}
                     for j, k in pairs(classes) do
                         if k == playerClass then break end
                         if j == #classes then useTable[location] = nil; end
