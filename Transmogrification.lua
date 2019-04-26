@@ -6,8 +6,8 @@ Transmogrication = {};
 local customEnabled = nil;
 
 local _G = _G
-local GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, strsub, gsub = 
-      GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, string.sub, string.gsub
+local GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, strsub, gsub, strfind = 
+      GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, string.sub, string.gsub, string.find
 local bor, lshift = bit.bor, bit.lshift;
 local NUM_BAG_SLOTS, BACKPACK_CONTAINER, BANK_CONTAINER = _G.NUM_BAG_SLOTS, _G.BACKPACK_CONTAINER, _G.BANK_CONTAINER;
 
@@ -133,8 +133,10 @@ local function AddEquippableItem(useTable, mies, inventorySlot, container, slot)
 	end
 end
 
+local alreadyAdded = {}
 hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, transmog)
     if transmog == nil then return end
+    if alreadyAdded[inventorySlot] then return else wipe(alreadyAdded) end
     local invItemId = GetInventoryItemID("player", inventorySlot)
     if not invItemId then return end
 
@@ -171,17 +173,8 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
     end
 
     if not customEnabled then
-        local playerClass = UnitClass"player"
-        if GetLocale() == "ruRU" then
-            if playerClass == "Шаманка" then playerClass = "Шаман"
-            elseif playerClass == "Жрица" then playerClass = "Жрец"
-            elseif playerClass == "Охотница" then playerClass = "Охотник"
-            elseif playerClass == "Разбойница" then playerClass = "Разбойник"
-            elseif playerClass == "Чернокнижница" then playerClass = "Чернокнижник"
-            elseif playerClass == "Монахиня" then playerClass = "Монах"
-            end
-        end
-        playerClass = playerClass:lower()
+        local localizedClass, class = UnitClass"player"
+        localizedClass = LOCALIZED_CLASS_NAMES_MALE[class]
         for location, itemId in pairs(useTable) do
             if itemId == invItemId then useTable[location] = nil; end
             local _, link, itemRarity, _, _, _, itemSubClass, _, equipSlot, texture = GetItemInfo(itemId);
@@ -190,10 +183,10 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             --i.e it will hide armor from another classes but will show weapons that are unable to wear
             GameTooltip:SetOwner(UIParent,'ANCHOR_NONE')
             GameTooltip:SetHyperlink(link)
-            local pattern = string.gsub(ITEM_CLASSES_ALLOWED:lower(), "%%s", "(.+)")
-            for i = 1, GameTooltip:NumLines() do
-                local tooltipText = _G['GameTooltipTextLeft' .. i]:GetText():lower()
-                local _, _, classes = string.find(tooltipText, pattern)
+            local pattern = gsub(ITEM_CLASSES_ALLOWED, "%%s", "(.+)")
+            for i = GameTooltip:NumLines(), 1, -1 do
+                local tooltipText = _G['GameTooltipTextLeft' .. i]:GetText()
+                local _, _, classes = strfind(tooltipText, pattern)
                 if classes then
                     local c, c1, c2, c3, c4, c5, c6, c7 = 0, "", "", "", "", "", "", ""
                     for j = 1, #classes do
@@ -213,7 +206,7 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
                     classes = {c1, c2, c3, c4, c5, c6, c7}
                     for j, k in pairs(classes) do
                         k = gsub(k,'^ ?(.*)','%1')
-                        if k == playerClass then break end
+                        if k == localizedClass then break end
                         if j == #classes then useTable[location] = nil; end
                     end
                 end
@@ -226,7 +219,7 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
               or mainItemSubClass == shields and (itemSubClass ~= mainItemSubClass)
               or (itemSubClass == polearms or itemSubClass == staves) and (itemSubClass ~= mainItemSubClass and mainItemSubClass ~= staves and mainItemSubClass ~= polearms)
               or (mainItemSubClass == polearms or mainItemSubClass == staves) and (mainItemSubClass ~= itemSubClass and itemSubClass ~= staves and itemSubClass ~= polearms)
-              or string.find(texture:lower(), 'fishing')
+              or strfind(texture:lower(), 'fishing')
               or mainItemSubClass == fists and (itemSubClass ~= mainItemSubClass)
               or (mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces) and (itemSubClass == twoHmaces or itemSubClass == twoHaxes or itemSubClass == twoHswords or itemSubClass == daggers or itemSubClass == fists)
               or (mainItemSubClass == guns or mainItemSubClass == bows or mainItemSubClass == crossbows) and (itemSubClass ~= guns and itemSubClass ~= bows and itemSubClass ~= crossbows)
@@ -301,6 +294,7 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             end
         end
     end
+    alreadyAdded[inventorySlot] = useTable
 end)
 
 function Transmogrication.LoadInfo()
