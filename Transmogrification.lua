@@ -1,3 +1,5 @@
+local addonName, addonDB = ...
+
 PandaWoWCommandLib = commandLib
 assert(PandaWoWCommandLib)
 
@@ -31,12 +33,59 @@ local cloth, leather, mail, plate
 local oneHaxes, twoHaxes, polearms, staves, oneHmaces, twoHmaces, oneHswords, twoHswords, daggers, fists, shields, bows, crossbows, guns =
 GetSpellInfo(196), GetSpellInfo(197), GetSpellInfo(200), GetSpellInfo(227), GetSpellInfo(198), GetSpellInfo(199), 
 GetSpellInfo(201), GetSpellInfo(202), GetSpellInfo(1180), GetSpellInfo(15590), GetSpellInfo(9116), GetSpellInfo(264), GetSpellInfo(5011), GetSpellInfo(266)
+local alert
 if GetLocale() == "ruRU" then
     polearms = "Древковое"; oneHmaces = "Одноручное дробящее"; twoHmaces = "Двуручное дробящее"
     cloth = "Тканевые"; leather = "Кожаные"; mail = "Кольчужные"; plate = "Латные"; fists = "Кистевое"
     guns = "Огнестрельное"
+
+    alert = "Внимание! Ваши файлы интерфейса трансмогрификации устарели! \nОбновите файлы запустив лаунчер"
 else -- only enUS/enGB yet...
     cloth = "Cloth"; leather = "Leather"; mail = "Mail"; plate = "Plate"
+
+    alert = "Warning! Your transmogrify interface files are outdated! \nUpdate files by running launcher"
+end
+
+-- alert users to update addon
+local notifyUser = CreateFrame"Frame"
+notifyUser:RegisterEvent"CHAT_MSG_ADDON"
+notifyUser:RegisterEvent"PLAYER_ENTERING_WORLD"
+notifyUser:RegisterEvent"PLAYER_ENTERING_BATTLEGROUND"
+
+local PWT_VERSION_INFO = 1.0;
+local NEWVERSION = false;
+RegisterAddonMessagePrefix"PWTVerInfo"
+
+notifyUser:SetScript("OnEvent", function(self, event, ...)
+	if event == "CHAT_MSG_ADDON" then
+        local arg1, arg2, arg3, arg4 = ...
+		if arg1 == "PWTVerInfo" then
+			PandaWoW_HandleVersionInfo(arg2, arg4, arg3);
+		end
+	elseif event == "PLAYER_ENTERING_WORLD" then
+		if (IsInGuild()) then
+			PandaWoW_PostVersionInfo"GUILD";
+		end
+	elseif event == "PLAYER_ENTERING_BATTLEGROUND" then
+		PandaWoW_PostVersionInfo"INSTANCE_CHAT";
+    end
+end)
+
+function PandaWoW_PostVersionInfo(channel, target)
+	SendAddonMessage("PWTVerInfo", PWT_VERSION_INFO, channel, target);
+end
+
+function PandaWoW_HandleVersionInfo(msg, author, channel)
+	local recNumber = tonumber(msg);
+	if (recNumber > PWT_VERSION_INFO) then
+		if (not NEWVERSION) then
+            local alertIcon = [[|TInterface\DialogFrame\UI-Dialog-Icon-AlertOther:24:24:0|t]]
+            RaidNotice_AddMessage(RaidWarningFrame, alertIcon .. '\r\n' .. YELLOW_FONT_COLOR_CODE .. alert .. '\124r', ChatTypeInfo["RAID_WARNING"])
+            DEFAULT_CHAT_FRAME:AddMessage(alertIcon .. YELLOW_FONT_COLOR_CODE .. alert .. '\124r' .. alertIcon)
+		end
+	elseif (recNumber < PWT_VERSION_INFO) then
+		PandaWoW_PostVersionInfo("WHISPER", author);
+	end
 end
 
 local equipLocation =

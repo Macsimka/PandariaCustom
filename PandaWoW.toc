@@ -2,6 +2,7 @@
 ## Title: PandaWoW
 ## Version: 1.0
 ## SavedVariablesPerCharacter: IsCrossChecked
+## DefaultState: enabled
 
 LibStub.lua
 AceTimer-3.0.lua
