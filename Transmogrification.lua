@@ -6,17 +6,38 @@ Transmogrication = {};
 local customEnabled = nil;
 
 local _G = _G
-local GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo = 
-      GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo
+local GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, strsub, gsub, strfind = 
+      GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, string.sub, string.gsub, string.find
 local bor, lshift = bit.bor, bit.lshift;
 local NUM_BAG_SLOTS, BACKPACK_CONTAINER, BANK_CONTAINER = _G.NUM_BAG_SLOTS, _G.BACKPACK_CONTAINER, _G.BANK_CONTAINER;
 
-local VOID_CONTAINER = -3
+-- empty dummies
+local VOID_CONTAINER, PLAYER_CONTAINER = 12, 13
 
 -- en locale: "Quests","Quest", ru locale: "Задание","Задания" :\
 local QUESTS_LABEL, BATTLE_PET_SOURCE_2 = _G.QUESTS_LABEL, _G.BATTLE_PET_SOURCE_2
 
 local ITEM_QUALITY_LEGENDARY = _G.ITEM_QUALITY_LEGENDARY;
+
+--[[local itemTypes = {
+    oneHaxes    = 196,  twoHaxes    = 197,
+    oneHmaces   = 198,  twoHmaces   = 199,
+    polearms    = 200,  staves      = 227,
+    oneHswords  = 201,  twoHswords  = 202,
+    daggers     = 1180, fists       = 15590,
+    bows        = 264,  crossbows   = 5011,
+    guns        = 266,  wands       = 5009}]]
+local cloth, leather, mail, plate
+local oneHaxes, twoHaxes, polearms, staves, oneHmaces, twoHmaces, oneHswords, twoHswords, daggers, fists, shields, bows, crossbows, guns =
+GetSpellInfo(196), GetSpellInfo(197), GetSpellInfo(200), GetSpellInfo(227), GetSpellInfo(198), GetSpellInfo(199), 
+GetSpellInfo(201), GetSpellInfo(202), GetSpellInfo(1180), GetSpellInfo(15590), GetSpellInfo(9116), GetSpellInfo(264), GetSpellInfo(5011), GetSpellInfo(266)
+if GetLocale() == "ruRU" then
+    polearms = "Древковое"; oneHmaces = "Одноручное дробящее"; twoHmaces = "Двуручное дробящее"
+    cloth = "Тканевые"; leather = "Кожаные"; mail = "Кольчужные"; plate = "Латные"; fists = "Кистевое"
+    guns = "Огнестрельное"
+else -- only enUS/enGB yet...
+    cloth = "Cloth"; leather = "Leather"; mail = "Mail"; plate = "Plate"
+end
 
 local equipLocation =
 {
@@ -30,18 +51,17 @@ local equipLocation =
     INVTYPE_FEET		= 8,
     INVTYPE_WRIST		= 9,
     INVTYPE_HAND		= 10,
-    INVTYPE_CLOAK       = 15, -- INVTYPE_BACK
-    
+    INVTYPE_CLOAK       = 15,
+
     INVTYPE_WEAPON      = 16,
     INVTYPE_WEAPONMAINHAND = 16,
-    INVTYPE_MAINHAND	= 16,
     INVTYPE_2HWEAPON    = 16,
-    
+
     INVTYPE_WEAPONOFFHAND = 17,
-    INVTYPE_OFFHAND		= 17,
     INVTYPE_HOLDABLE    = 17,
     INVTYPE_SHIELD      = 17,
     INVTYPE_RANGED		= 18,
+    INVTYPE_RANGEDRIGHT = 18,
 };
 
 -- location offsets
@@ -61,12 +81,12 @@ function PackInventoryLocation(container, slot, equipment, bank, bags, voidStora
 
 	-- container (tab, bag, ...) and slot
 	location = location + (slot or 1)
-	
+
     if bank and bags and container > NUM_BAG_SLOTS then
 		-- store bank bags as 1-7 instead of 5-11
 		container = container - ITEM_INVENTORY_BANK_BAG_OFFSET;
 	end
-    
+
     if container and container > 0 then
 		location = location + lshift(container, ITEM_INVENTORY_BAG_BIT_OFFSET)
 	end
@@ -79,96 +99,212 @@ function PackInventoryLocation(container, slot, equipment, bank, bags, voidStora
 	return location;
 end
 
-local function AddEquippableItem(useTable, inventorySlot, container, slot)
+local function AddEquippableItem(useTable, mies, inventorySlot, container, slot)
     local itemID, link, _
     if container == VOID_CONTAINER then
         _, link = GetItemInfo(GetVoidItemInfo(slot))
-        itemID = tostring(string.match(link,"item:([%-?%d]+)")) -- extract ID from link
+        itemID = tonumber(string.match(link,"item:([%-?%d]+)")) -- extract ID from link
+    elseif container == PLAYER_CONTAINER then
+        itemID = GetInventoryItemID("player", slot)
+        link   = GetInventoryItemLink("player", slot)
     else
         itemID = GetContainerItemID(container, slot)
         link   = GetContainerItemLink(container, slot)
     end
 
     if not link then return end
-    
+
 	local isBags   = container >= BACKPACK_CONTAINER and container <= NUM_BAG_SLOTS + _G.NUM_BANKBAGSLOTS
 	local isBank   = container == BANK_CONTAINER or (isBags and container > NUM_BAG_SLOTS)
     local isVoid   = container == VOID_CONTAINER
 	local isPlayer = not isBank and not isVoid
 	if not isBags then container = nil end
 
-	local _, _, _, _, _, itemClass, _, _, equipSlot = GetItemInfo(link)
-    if itemClass == BATTLE_PET_SOURCE_2 or itemClass == QUESTS_LABEL then return end -- en/ru
+	local _, _, _, _, _, _, itemSubClass, _, equipSlot = GetItemInfo(link)
+    if itemSubClass == BATTLE_PET_SOURCE_2 or itemSubClass == QUESTS_LABEL then return end -- en/ru
 
 	local location = PackInventoryLocation(container, slot, isPlayer, isBank, isBags, isVoid);
-    
-    if equipLocation[equipSlot] == inventorySlot and useTable[location] == nil then
+
+    if not customEnabled and equipSlot ~= mies 
+    and (inventorySlot == 17 or inventorySlot == 16) then -- offhand fix
+        useTable[location] = nil
+        return
+    end
+
+    if (equipLocation[equipSlot] == inventorySlot or equipLocation[equipSlot] == 16 or equipLocation[equipSlot] == 18) and useTable[location] == nil then
         useTable[location] = itemID;
 	end
 end
 
+local alreadyAdded = {}
 hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, transmog)
     if transmog == nil then return end
     local invItemId = GetInventoryItemID("player", inventorySlot)
     if not invItemId then return end
 
-    local _, _, _, _, _, mainItemClass, _, _, mies = GetItemInfo(invItemId);
+    local _, _, _, _, _, _, mainItemSubClass, _, mies = GetItemInfo(invItemId);
+
+    if mainItemSubClass == nil then return end
+    if #alreadyAdded ~= 0 then return else wipe(alreadyAdded) end
+
+    for container = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
+        for slot = 1, GetContainerNumSlots(container) do
+            AddEquippableItem(useTable, mies, inventorySlot, container, slot)
+        end
+    end
+
+    --print(PackInventoryLocation(BANK_CONTAINER, 2, nil, true, nil));
+
+    -- scan bank main frame (data is only available when bank is opened)
+    for slot = 1, _G.NUM_BANKGENERIC_SLOTS do
+        AddEquippableItem(useTable, mies, inventorySlot, BANK_CONTAINER, slot)
+    end
+
+    -- scan bank containers
+    for bankContainer = 1, _G.NUM_BANKBAGSLOTS do
+        local container = _G.ITEM_INVENTORY_BANK_BAG_OFFSET + bankContainer
+        for slot = 1, GetContainerNumSlots(container) or 0 do
+            AddEquippableItem(useTable, mies, inventorySlot, container, slot)
+        end
+    end
+
+    -- scan void
+    for voidSlot = 1, 80 do -- VOID_STORAGE_MAX
+        if GetVoidItemInfo(voidSlot) then
+            AddEquippableItem(useTable, mies, inventorySlot, VOID_CONTAINER, voidSlot)
+        end
+    end
     
-    if mainItemClass == nil then return end
-    
-    if customEnabled == true then
-        for container = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
-            for slot = 1, GetContainerNumSlots(container) do
-                AddEquippableItem(useTable, inventorySlot, container, slot)
+    -- scan equipped (for both weapon hands)
+    AddEquippableItem(useTable, mies, inventorySlot, PLAYER_CONTAINER, 16)
+    AddEquippableItem(useTable, mies, inventorySlot, PLAYER_CONTAINER, 17)
+
+    if not customEnabled then
+        local localizedClass, class = UnitClass"player"
+        localizedClass = LOCALIZED_CLASS_NAMES_MALE[class]
+        for location, itemId in pairs(useTable) do
+            if itemId == invItemId then useTable[location] = nil; end
+            local _, link, itemRarity, _, _, _, itemSubClass, _, equipSlot, texture = GetItemInfo(itemId);
+
+            -- We need to check tooltip of items to tmog if we are able to wear
+            --i.e it will hide armor from another classes but will show weapons that are unable to wear
+            GameTooltip:SetOwner(UIParent,'ANCHOR_NONE')
+            GameTooltip:SetHyperlink(link)
+            local pattern = gsub(ITEM_CLASSES_ALLOWED, "%%s", "(.+)")
+            for i = GameTooltip:NumLines(), 1, -1 do
+                local tooltipText = _G['GameTooltipTextLeft' .. i]:GetText()
+                local _, _, classes = strfind(tooltipText, pattern)
+                if classes then
+                    local c, c1, c2, c3, c4, c5, c6, c7 = 0, "", "", "", "", "", "", ""
+                    for j = 1, #classes do
+                        local chr = strsub(classes, j, j+1)
+                        if chr~=", " then
+                            chr = strsub(classes, j, j)
+                            if c==0 then c1=c1 .. chr
+                            elseif c==1 then c2=c2 .. chr
+                            elseif c==2 then c3=c3 .. chr
+                            elseif c==3 then c4=c4 .. chr
+                            elseif c==4 then c5=c5 .. chr
+                            elseif c==5 then c6=c6 .. chr
+                            elseif c==6 then c7=c7 .. chr
+                            end
+                        else c=c+1 end
+                    end
+                    classes = {c1, c2, c3, c4, c5, c6, c7}
+                    for j, k in pairs(classes) do
+                        k = gsub(k,'^ ?(.*)','%1')
+                        if k == localizedClass then break end
+                        if j == #classes then useTable[location] = nil; end
+                    end
+                end
             end
-        end
-        
-        --print(PackInventoryLocation(BANK_CONTAINER, 2, nil, true, nil));
-        
-        -- scan bank main frame (data is only available when bank is opened)
-        for slot = 1, _G.NUM_BANKGENERIC_SLOTS do
-            AddEquippableItem(useTable, inventorySlot, BANK_CONTAINER, slot)
-        end
-        
-        -- scan bank containers
-        for bankContainer = 1, _G.NUM_BANKBAGSLOTS do
-            local container = _G.ITEM_INVENTORY_BANK_BAG_OFFSET + bankContainer
-            for slot = 1, GetContainerNumSlots(container) or 0 do
-                AddEquippableItem(useTable, inventorySlot, container, slot)
-            end
-        end
-        
-        -- scan void
-        for voidSlot = 1, 80 do -- VOID_STORAGE_MAX
-            if GetVoidItemInfo(voidSlot) then
-                AddEquippableItem(useTable, inventorySlot, VOID_CONTAINER, voidSlot)
+            GameTooltip:Hide()
+
+            -- Hide lower armor type items and legendary items
+            if (mainItemSubClass == plate or mainItemSubClass == mail or mainItemSubClass == leather)and (itemSubClass ~= mainItemSubClass)
+              or mainItemSubClass == daggers and (itemSubClass ~= mainItemSubClass)
+              or mainItemSubClass == shields and (itemSubClass ~= mainItemSubClass)
+              or (itemSubClass == polearms or itemSubClass == staves) and (itemSubClass ~= mainItemSubClass and mainItemSubClass ~= staves and mainItemSubClass ~= polearms)
+              or (mainItemSubClass == polearms or mainItemSubClass == staves) and (mainItemSubClass ~= itemSubClass and itemSubClass ~= staves and itemSubClass ~= polearms)
+              or strfind(texture:lower(), 'fishing')
+              or mainItemSubClass == fists and (itemSubClass ~= mainItemSubClass)
+              or (mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces) and (itemSubClass == twoHmaces or itemSubClass == twoHaxes or itemSubClass == twoHswords or itemSubClass == daggers or itemSubClass == fists)
+              or (mainItemSubClass == guns or mainItemSubClass == bows or mainItemSubClass == crossbows) and (itemSubClass ~= guns and itemSubClass ~= bows and itemSubClass ~= crossbows)
+              or itemRarity == ITEM_QUALITY_LEGENDARY then
+                useTable[location] = nil;
             end
         end
     else
         for location, itemId in pairs(useTable) do
-            local _, _, itemRarity = GetItemInfo(itemId);
-            
-            if itemRarity == ITEM_QUALITY_LEGENDARY then
+            if itemId == invItemId then useTable[location] = nil; end
+            local _, _, _, _, _, _, itemSubClass, _, equipSlot = GetItemInfo(itemId);
+
+            -- Allow robes trans into chests and vice versa
+            if mies == "INVTYPE_ROBE" and equipSlot == "INVTYPE_CHEST" then
+                equipSlot = "INVTYPE_ROBE"
+            elseif mies == "INVTYPE_CHEST" and equipSlot == "INVTYPE_ROBE" then
+                equipSlot = "INVTYPE_CHEST"
+            -- Allow bows trans into crossbows/guns and vice versa
+            elseif mies == "INVTYPE_RANGED" and equipSlot == "INVTYPE_RANGEDRIGHT" then
+                equipSlot = "INVTYPE_RANGED"
+            elseif mies == "INVTYPE_RANGEDRIGHT" and equipSlot == "INVTYPE_RANGED" then
+                equipSlot = "INVTYPE_RANGEDRIGHT"
+            -- Allow 1H -> 2H
+            elseif mies == "INVTYPE_WEAPON" and equipSlot == "INVTYPE_2HWEAPON" then
+                equipSlot = "INVTYPE_WEAPON"
+            elseif mies == "INVTYPE_2HWEAPON" and equipSlot == "INVTYPE_WEAPON" then
+                equipSlot = "INVTYPE_2HWEAPON"
+            -- Need serverside fix
+            --[[ Allow main hands trans into one hands and vice versa
+            elseif mies == "INVTYPE_WEAPON" and equipSlot == "INVTYPE_WEAPONMAINHAND" then
+                equipSlot = "INVTYPE_WEAPON"
+            elseif mies == "INVTYPE_WEAPONMAINHAND" and equipSlot == "INVTYPE_WEAPON" then
+                equipSlot = "INVTYPE_WEAPONMAINHAND"
+            ]]
+            -- Allow offhands trans into shields and vice versa
+            elseif mies == "INVTYPE_HOLDABLE" and equipSlot == "INVTYPE_SHIELD" then
+                equipSlot = "INVTYPE_HOLDABLE"
+            elseif mies == "INVTYPE_SHIELD" and equipSlot == "INVTYPE_HOLDABLE" then
+                equipSlot = "INVTYPE_SHIELD"
+            end
+
+            -- Hide weapons that not allowed to tmog
+            -- polearms/staves -> staves/polearms
+            if (mainItemSubClass == polearms or mainItemSubClass == staves)
+              and (itemSubClass ~= staves and itemSubClass ~= polearms) then
+                useTable[location] = nil;
+            -- daggers/fists -> 1h
+            elseif (mainItemSubClass == daggers or mainItemSubClass == fists)
+              and (itemSubClass ~= oneHswords and itemSubClass ~= oneHaxes and itemSubClass ~= oneHmaces
+              and itemSubClass ~= daggers and itemSubClass ~= fists) then
+                useTable[location] = nil;
+            -- 2h NOT ALLOWED TO daggers/fists
+            elseif (mainItemSubClass == twoHswords or mainItemSubClass == twoHaxes or mainItemSubClass == twoHmaces)
+              and (itemSubClass == daggers or itemSubClass == fists) then
+                useTable[location] = nil;
+            -- 1h/2h > 1h/2h
+            elseif (mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces or mainItemSubClass == twoHswords or mainItemSubClass == twoHaxes or mainItemSubClass == twoHmaces)
+              and (itemSubClass ~= twoHswords and itemSubClass ~= twoHaxes and itemSubClass ~= twoHmaces
+              and itemSubClass ~= oneHswords and itemSubClass ~= oneHaxes and itemSubClass ~= oneHmaces
+              and itemSubClass ~= daggers and itemSubClass ~= fists) then
+                useTable[location] = nil;
+            -- Hide wands from bows/crossbows/guns slot and vice versa
+            elseif (mainItemSubClass == guns or mainItemSubClass == bows or mainItemSubClass == crossbows)
+             and (itemSubClass ~= guns and itemSubClass ~= bows and itemSubClass ~= crossbows) then
+                useTable[location] = nil;
+            elseif mies ~= equipSlot and (itemSubClass == guns or itemSubClass == bows or itemSubClass == crossbows) then
+                useTable[location] = nil;
+            elseif itemSubClass ~= mainItemSubClass and mies == equipSlot and (mainItemSubClass ~= guns and mainItemSubClass ~= bows and mainItemSubClass ~= crossbows) and (itemSubClass == guns or itemSubClass == bows or itemSubClass == crossbows) then
+                useTable[location] = nil;
+            end
+
+            if (itemSubClass == BATTLE_PET_SOURCE_2 or itemSubClass == QUESTS_LABEL) or -- en/ru
+            mies ~= equipSlot then
                 useTable[location] = nil;
             end
         end
     end
-    
-    for location, itemId in pairs(useTable) do
-        local _, _, _, _, _, itemClass, _, _, equipSlot  = GetItemInfo(itemId);
-        
-        -- Allow robes trans into chests and vice versa
-        if mies == "INVTYPE_ROBE" and equipSlot == "INVTYPE_CHEST" then
-            equipSlot = "INVTYPE_ROBE"
-        elseif mies == "INVTYPE_CHEST" and equipSlot == "INVTYPE_ROBE" then
-            equipSlot = "INVTYPE_CHEST"
-        end
-
-        if itemClass == BATTLE_PET_SOURCE_2 or itemClass == QUESTS_LABEL or -- en/ru
-           (mies ~= equipSlot) then
-            useTable[location] = nil;
-        end
-    end
+    alreadyAdded = useTable
 end)
 
 function Transmogrication.LoadInfo()
