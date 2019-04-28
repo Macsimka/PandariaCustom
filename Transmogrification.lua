@@ -185,16 +185,16 @@ local function AddEquippableItem(useTable, mies, inventorySlot, container, slot)
 	end
 end
 
-local alreadyAdded = {}
+local alreadyAdded
 hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, transmog)
     if transmog == nil then return end
+    if alreadyAdded then return else alreadyAdded = nil end
     local invItemId = GetInventoryItemID("player", inventorySlot)
     if not invItemId then return end
 
     local _, _, _, _, _, _, mainItemSubClass, _, mies = GetItemInfo(invItemId);
 
     if mainItemSubClass == nil then return end
-    if #alreadyAdded ~= 0 then return else wipe(alreadyAdded) end
 
     for container = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
         for slot = 1, GetContainerNumSlots(container) do
@@ -353,7 +353,7 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             end
         end
     end
-    alreadyAdded = useTable
+    alreadyAdded = true
 end)
 
 function Transmogrication.LoadInfo()
