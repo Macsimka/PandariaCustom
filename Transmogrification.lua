@@ -185,10 +185,10 @@ local function AddEquippableItem(useTable, mies, inventorySlot, container, slot)
 	end
 end
 
-local alreadyAdded
+local alreadyAdded = {}
 hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, transmog)
     if transmog == nil then return end
-    if alreadyAdded then return else alreadyAdded = nil end
+    if #alreadyAdded > 0 then return else wipe(alreadyAdded) end
     local invItemId = GetInventoryItemID("player", inventorySlot)
     if not invItemId then return end
 
@@ -353,7 +353,7 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             end
         end
     end
-    alreadyAdded = true
+    alreadyAdded = useTable
 end)
 
 function Transmogrication.LoadInfo()
