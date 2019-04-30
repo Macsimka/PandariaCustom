@@ -185,10 +185,19 @@ local function AddEquippableItem(useTable, mies, inventorySlot, container, slot)
 	end
 end
 
-local alreadyAdded = {}
+local alreadyAdded = nil
+hooksecurefunc(EquipmentFlyoutFrame,'Show', function(self)
+    if self.button and self.button:GetParent().flyoutSettings.parent == TransmogrifyFrame and not alreadyAdded then
+        alreadyAdded = true
+    end
+end)
+hooksecurefunc(EquipmentFlyoutFrame,'Hide', function()
+    alreadyAdded = nil
+end)
+
 hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, transmog)
     if transmog == nil then return end
-    if #alreadyAdded > 0 then return else wipe(alreadyAdded) end
+    if alreadyAdded then return end
     local invItemId = GetInventoryItemID("player", inventorySlot)
     if not invItemId then return end
 
@@ -353,7 +362,6 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             end
         end
     end
-    alreadyAdded = useTable
 end)
 
 function Transmogrication.LoadInfo()
