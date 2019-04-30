@@ -39,11 +39,11 @@ if GetLocale() == "ruRU" then
     cloth = "Тканевые"; leather = "Кожаные"; mail = "Кольчужные"; plate = "Латные"; fists = "Кистевое"
     guns = "Огнестрельное"
 
-    alert = "Внимание! Ваши файлы интерфейса трансмогрификации устарели! \nОбновите файлы запустив лаунчер"
+    alert = "Внимание! Ваши файлы интерфейса трансмогрификации устарели!\nОбновите файлы запустив лаунчер"
 else -- only enUS/enGB yet...
     cloth = "Cloth"; leather = "Leather"; mail = "Mail"; plate = "Plate"
 
-    alert = "Warning! Your transmogrify interface files are outdated! \nUpdate files by running launcher"
+    alert = "Warning! Your transmogrify interface files are outdated!\nUpdate files by running launcher"
 end
 
 -- alert users to update addon
@@ -184,16 +184,6 @@ local function AddEquippableItem(useTable, mies, inventorySlot, container, slot)
         useTable[location] = itemID;
 	end
 end
-
-local alreadyAdded = nil
-hooksecurefunc(EquipmentFlyoutFrame,'Show', function(self)
-    if self.button and self.button:GetParent().flyoutSettings.parent == TransmogrifyFrame and not alreadyAdded then
-        alreadyAdded = true
-    end
-end)
-hooksecurefunc(EquipmentFlyoutFrame,'Hide', function()
-    alreadyAdded = nil
-end)
 
 hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, transmog)
     if transmog == nil then return end
@@ -362,6 +352,15 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             end
         end
     end
+end)
+local alreadyAdded = nil
+hooksecurefunc(EquipmentFlyoutFrame,'Show', function(self)
+    if self.button and self.button:GetParent().flyoutSettings.parent == TransmogrifyFrame then
+        alreadyAdded = true
+    end
+end)
+hooksecurefunc(EquipmentFlyoutFrame,'Hide', function()
+    alreadyAdded = nil
 end)
 
 function Transmogrication.LoadInfo()
