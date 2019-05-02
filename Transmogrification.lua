@@ -185,7 +185,7 @@ local function AddEquippableItem(useTable, mies, inventorySlot, container, slot)
 	end
 end
 
-EquipmentFlyout_UpdateFlyout_orig = EquipmentFlyout_UpdateFlyout
+local EquipmentFlyout_UpdateFlyout_orig = EquipmentFlyout_UpdateFlyout
 hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, transmog)
     if transmog == nil then return end
     EquipmentFlyout_UpdateFlyout = function()end
@@ -356,11 +356,8 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
 end)
 
 hooksecurefunc(EquipmentFlyoutFrame,'Show', function(self)
-    if self.button and self.button:GetParent().flyoutSettings.parent == TransmogrifyFrame then
-        if cacheSlot ~= self.button.id then cacheTable = nil end
-    else
-        EquipmentFlyout_UpdateFlyout = EquipmentFlyout_UpdateFlyout_orig
-    end
+    if self.button and self.button:GetParent().flyoutSettings.parent == TransmogrifyFrame then return end
+    EquipmentFlyout_UpdateFlyout = EquipmentFlyout_UpdateFlyout_orig
 end)
 
 hooksecurefunc(EquipmentFlyoutFrame,'Hide', function(self)
