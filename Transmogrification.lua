@@ -8,8 +8,8 @@ Transmogrication = {};
 local customEnabled = nil;
 
 local _G = _G
-local GetInventoryItemsForSlot, GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, strsub, gsub, strfind = 
-      GetInventoryItemsForSlot, GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, string.sub, string.gsub, string.find
+local GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, strsub, gsub, strfind = 
+      GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, string.sub, string.gsub, string.find
 local bor, lshift = bit.bor, bit.lshift;
 local NUM_BAG_SLOTS, BACKPACK_CONTAINER, BANK_CONTAINER = _G.NUM_BAG_SLOTS, _G.BACKPACK_CONTAINER, _G.BANK_CONTAINER;
 
