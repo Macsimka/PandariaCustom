@@ -8,8 +8,8 @@ Transmogrication = {};
 local customEnabled = nil;
 
 local _G = _G
-local GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, strsub, gsub, strfind = 
-      GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, string.sub, string.gsub, string.find
+local GetInventoryItemsForSlot, GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, strsub, gsub, strfind = 
+      GetInventoryItemsForSlot, GetContainerNumSlots, GetContainerItemID, GetContainerItemLink, GetItemInfo, GetSpellInfo, string.sub, string.gsub, string.find
 local bor, lshift = bit.bor, bit.lshift;
 local NUM_BAG_SLOTS, BACKPACK_CONTAINER, BANK_CONTAINER = _G.NUM_BAG_SLOTS, _G.BACKPACK_CONTAINER, _G.BANK_CONTAINER;
 
@@ -56,6 +56,23 @@ local PWT_VERSION_INFO = 1.0;
 local NEWVERSION = false;
 RegisterAddonMessagePrefix"PWTVerInfo"
 
+local function PandaWoW_PostVersionInfo(channel, target)
+	SendAddonMessage("PWTVerInfo", PWT_VERSION_INFO, channel, target);
+end
+
+local function PandaWoW_HandleVersionInfo(msg, author, channel)
+	local recNumber = tonumber(msg);
+	if (recNumber > PWT_VERSION_INFO) then
+		if (not NEWVERSION) then
+            local alertIcon = [[|TInterface\DialogFrame\UI-Dialog-Icon-AlertOther:24:24:0|t]]
+            RaidNotice_AddMessage(RaidWarningFrame, alertIcon .. '\r\n' .. YELLOW_FONT_COLOR_CODE .. alert .. '\124r', ChatTypeInfo["RAID_WARNING"])
+            DEFAULT_CHAT_FRAME:AddMessage(alertIcon .. YELLOW_FONT_COLOR_CODE .. alert .. '\124r' .. alertIcon)
+		end
+	elseif (recNumber < PWT_VERSION_INFO) then
+		PandaWoW_PostVersionInfo("WHISPER", author);
+	end
+end
+
 notifyUser:SetScript("OnEvent", function(self, event, ...)
 	if event == "CHAT_MSG_ADDON" then
         local arg1, arg2, arg3, arg4 = ...
@@ -70,23 +87,6 @@ notifyUser:SetScript("OnEvent", function(self, event, ...)
 		PandaWoW_PostVersionInfo"INSTANCE_CHAT";
     end
 end)
-
-function PandaWoW_PostVersionInfo(channel, target)
-	SendAddonMessage("PWTVerInfo", PWT_VERSION_INFO, channel, target);
-end
-
-function PandaWoW_HandleVersionInfo(msg, author, channel)
-	local recNumber = tonumber(msg);
-	if (recNumber > PWT_VERSION_INFO) then
-		if (not NEWVERSION) then
-            local alertIcon = [[|TInterface\DialogFrame\UI-Dialog-Icon-AlertOther:24:24:0|t]]
-            RaidNotice_AddMessage(RaidWarningFrame, alertIcon .. '\r\n' .. YELLOW_FONT_COLOR_CODE .. alert .. '\124r', ChatTypeInfo["RAID_WARNING"])
-            DEFAULT_CHAT_FRAME:AddMessage(alertIcon .. YELLOW_FONT_COLOR_CODE .. alert .. '\124r' .. alertIcon)
-		end
-	elseif (recNumber < PWT_VERSION_INFO) then
-		PandaWoW_PostVersionInfo("WHISPER", author);
-	end
-end
 
 local equipLocation =
 {
@@ -185,24 +185,10 @@ local function AddEquippableItem(useTable, mies, inventorySlot, container, slot)
 	end
 end
 
-local alreadyAdded = nil
-local transmog = nil
-hooksecurefunc(EquipmentFlyoutFrame,'Hide', function()
-    alreadyAdded = nil
-    transmog = nil
-end)
-hooksecurefunc(EquipmentFlyoutFrame,'Show', function(self)
-    if self.button and self.button:GetParent().flyoutSettings.parent == TransmogrifyFrame then
-        transmog = true
-    end
-end)
-TransmogrifyItemFlyout_GetItems_old = TransmogrifyItemFlyout_GetItems
-TransmogrifyItemFlyout_GetItems = function(slot, itemTable)
-    return TransmogrifyItemFlyout_GetItems_old(slot, alreadyAdded or itemTable)
-end
+EquipmentFlyout_UpdateFlyout_orig = EquipmentFlyout_UpdateFlyout
 hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, transmog)
     if transmog == nil then return end
-    if alreadyAdded then return end
+    EquipmentFlyout_UpdateFlyout = function()end
     local invItemId = GetInventoryItemID("player", inventorySlot)
     if not invItemId then return end
 
@@ -284,15 +270,15 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             GameTooltip:Hide()
 
             -- Hide lower armor type items and legendary items
-            if (mainItemSubClass == plate or mainItemSubClass == mail or mainItemSubClass == leather)and (itemSubClass ~= mainItemSubClass)
+            if ((mainItemSubClass == plate or mainItemSubClass == mail or mainItemSubClass == leather or mainItemSubClass == cloth) and itemSubClass ~= mainItemSubClass)
               or mainItemSubClass == daggers and (itemSubClass ~= mainItemSubClass)
               or mainItemSubClass == shields and (itemSubClass ~= mainItemSubClass)
-              or (itemSubClass == polearms or itemSubClass == staves) and (itemSubClass ~= mainItemSubClass and mainItemSubClass ~= staves and mainItemSubClass ~= polearms)
-              or (mainItemSubClass == polearms or mainItemSubClass == staves) and (mainItemSubClass ~= itemSubClass and itemSubClass ~= staves and itemSubClass ~= polearms)
+              or ((itemSubClass == polearms or itemSubClass == staves) and (itemSubClass ~= mainItemSubClass and mainItemSubClass ~= staves and mainItemSubClass ~= polearms))
+              or ((mainItemSubClass == polearms or mainItemSubClass == staves) and (mainItemSubClass ~= itemSubClass and itemSubClass ~= staves and itemSubClass ~= polearms))
               or strfind(texture:lower(), 'fishing')
               or mainItemSubClass == fists and (itemSubClass ~= mainItemSubClass)
-              or (mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces) and (itemSubClass == twoHmaces or itemSubClass == twoHaxes or itemSubClass == twoHswords or itemSubClass == daggers or itemSubClass == fists)
-              or (mainItemSubClass == guns or mainItemSubClass == bows or mainItemSubClass == crossbows) and (itemSubClass ~= guns and itemSubClass ~= bows and itemSubClass ~= crossbows)
+              or ((mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces) and (itemSubClass == twoHmaces or itemSubClass == twoHaxes or itemSubClass == twoHswords or itemSubClass == daggers or itemSubClass == fists))
+              or ((mainItemSubClass == guns or mainItemSubClass == bows or mainItemSubClass == crossbows) and (itemSubClass ~= guns and itemSubClass ~= bows and itemSubClass ~= crossbows))
               or itemRarity == ITEM_QUALITY_LEGENDARY then
                 useTable[location] = nil;
             end
@@ -367,7 +353,18 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             end
         end
     end
-    alreadyAdded = useTable
+end)
+
+hooksecurefunc(EquipmentFlyoutFrame,'Show', function(self)
+    if self.button and self.button:GetParent().flyoutSettings.parent == TransmogrifyFrame then
+        if cacheSlot ~= self.button.id then cacheTable = nil end
+    else
+        EquipmentFlyout_UpdateFlyout = EquipmentFlyout_UpdateFlyout_orig
+    end
+end)
+
+hooksecurefunc(EquipmentFlyoutFrame,'Hide', function(self)
+    EquipmentFlyout_UpdateFlyout = EquipmentFlyout_UpdateFlyout_orig
 end)
 
 function Transmogrication.LoadInfo()
