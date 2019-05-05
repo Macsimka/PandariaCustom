@@ -1,4 +1,5 @@
 enum FrameXMLEvents
+{
     UNIT_PET = 0x1,
     UNIT_TARGET = 0x2,
     UNIT_HEALTH = 0x3,
