@@ -318,9 +318,9 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             end
 
             -- Hide weapons that not allowed to tmog
-            -- polearms/staves -> staves/polearms
+            -- polearms/staves -> staves/polearms/2h
             if (mainItemSubClass == polearms or mainItemSubClass == staves)
-              and (itemSubClass ~= staves and itemSubClass ~= polearms) then
+              and (itemSubClass ~= staves and itemSubClass ~= polearms and itemSubClass ~= twoHswords and itemSubClass ~= twoHaxes and itemSubClass ~= twoHmaces) then
                 useTable[location] = nil;
             -- daggers/fists -> 1h
             elseif (mainItemSubClass == daggers or mainItemSubClass == fists)
@@ -335,7 +335,7 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             elseif (mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces or mainItemSubClass == twoHswords or mainItemSubClass == twoHaxes or mainItemSubClass == twoHmaces)
               and (itemSubClass ~= twoHswords and itemSubClass ~= twoHaxes and itemSubClass ~= twoHmaces
               and itemSubClass ~= oneHswords and itemSubClass ~= oneHaxes and itemSubClass ~= oneHmaces
-              and itemSubClass ~= daggers and itemSubClass ~= fists) then
+              and itemSubClass ~= daggers and itemSubClass ~= fists and itemSubClass ~= staves and itemSubClass ~= polearms) then
                 useTable[location] = nil;
             -- Hide wands from bows/crossbows/guns slot and vice versa
             elseif (mainItemSubClass == guns or mainItemSubClass == bows or mainItemSubClass == crossbows)
