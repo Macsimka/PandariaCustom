@@ -52,7 +52,7 @@ notifyUser:RegisterEvent"CHAT_MSG_ADDON"
 notifyUser:RegisterEvent"PLAYER_ENTERING_WORLD"
 notifyUser:RegisterEvent"PLAYER_ENTERING_BATTLEGROUND"
 
-local PWT_VERSION_INFO = 1.1;
+local PWT_VERSION_INFO = 1.2;
 local NEWVERSION = false;
 RegisterAddonMessagePrefix"PWTVerInfo"
 
@@ -74,6 +74,8 @@ local function PandaWoW_HandleVersionInfo(msg, author, channel)
 	end
 end
 
+LoadAddOn"Blizzard_ItemAlterationUI"
+TransmogrifyArtFrameTitleText:SetText(TRANSMOGRIFY .. " (v. " .. PWT_VERSION_INFO .. ")")
 notifyUser:SetScript("OnEvent", function(self, event, ...)
 	if event == "CHAT_MSG_ADDON" then
         local arg1, arg2, arg3, arg4 = ...
@@ -357,14 +359,26 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             end
         end
     end
-    
+
+    -- clean from incorrect slots (x64 client)
+    for location, itemId in pairs(useTable) do
+        local _, _, _, _, _, _, itemSubClass, _, itemSlot = GetItemInfo(itemId);
+        if equipLocation[itemSlot] ~= inventorySlot and inventorySlot == 17 then 
+            if itemSubClass == guns or itemSubClass == bows or itemSubClass == crossbows then
+                useTable[location] = nil
+            end
+        elseif equipLocation[mies] == 16 and (itemSubClass == guns or itemSubClass == bows or itemSubClass == crossbows) then useTable[location] = nil
+        elseif equipLocation[itemSlot] ~= inventorySlot and (itemSubClass ~= guns and itemSubClass ~= bows and itemSubClass ~= crossbows) then useTable[location] = nil 
+        end
+    end
+
     -- clean from duplicates
     local hash = {}
     for location, itemId in pairs(useTable) do
-       if not hash[itemId] then
-           hash[itemId] = true
-       else useTable[location] = nil
-       end
+        if not hash[itemId] then
+            hash[itemId] = true
+        else useTable[location] = nil
+        end
     end
 end)
 
