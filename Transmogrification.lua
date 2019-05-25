@@ -309,13 +309,18 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
                 equipSlot = "INVTYPE_WEAPON"
             elseif mies == "INVTYPE_2HWEAPON" and equipSlot == "INVTYPE_WEAPON" then
                 equipSlot = "INVTYPE_2HWEAPON"
-            -- Need serverside fix
-            --[[ Allow main hands trans into one hands and vice versa
-            elseif mies == "INVTYPE_WEAPON" and equipSlot == "INVTYPE_WEAPONMAINHAND" then
-                equipSlot = "INVTYPE_WEAPON"
-            elseif mies == "INVTYPE_WEAPONMAINHAND" and equipSlot == "INVTYPE_WEAPON" then
-                equipSlot = "INVTYPE_WEAPONMAINHAND"
-            ]]
+            -- Allow main hands trans into one hands and vice versa
+            if Is64BitClient() then -- working only on x64 client :(
+                if mies == "INVTYPE_WEAPON" and equipSlot == "INVTYPE_WEAPONMAINHAND" then
+                    equipSlot = "INVTYPE_WEAPON"
+                elseif mies == "INVTYPE_WEAPONMAINHAND" and equipSlot == "INVTYPE_WEAPON" then
+                    equipSlot = "INVTYPE_WEAPONMAINHAND"
+                elseif mies == "INVTYPE_WEAPON" and equipSlot == "INVTYPE_WEAPONOFFHAND" then
+                    equipSlot = "INVTYPE_WEAPON"
+                elseif mies == "INVTYPE_WEAPONOFFHAND" and equipSlot == "INVTYPE_WEAPON" then
+                    equipSlot = "INVTYPE_WEAPONOFFHAND"
+                end
+            end
             -- Allow offhands trans into shields and vice versa
             elseif mies == "INVTYPE_HOLDABLE" and equipSlot == "INVTYPE_SHIELD" then
                 equipSlot = "INVTYPE_HOLDABLE"
