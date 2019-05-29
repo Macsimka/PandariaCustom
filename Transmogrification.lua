@@ -311,7 +311,9 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
                 equipSlot = "INVTYPE_2HWEAPON"
             -- Allow main hands trans into one hands and vice versa
             if Is64BitClient() then -- working only on x64 client :(
-                if mies == "INVTYPE_WEAPON" and equipSlot == "INVTYPE_WEAPONMAINHAND" then
+                if mies == "INVTYPE_2HWEAPON" and itemId == 3934 then
+                    equipSlot = "INVTYPE_2HWEAPON"
+                elseif mies == "INVTYPE_WEAPON" and equipSlot == "INVTYPE_WEAPONMAINHAND" then
                     equipSlot = "INVTYPE_WEAPON"
                 elseif mies == "INVTYPE_WEAPONMAINHAND" and equipSlot == "INVTYPE_WEAPON" then
                     equipSlot = "INVTYPE_WEAPONMAINHAND"
@@ -329,8 +331,9 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             end
 
             -- Hide weapons that not allowed to tmog
+            if Is64BitClient() and itemId == 3934 and (mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces or mainItemSubClass == twoHswords or mainItemSubClass == twoHaxes or mainItemSubClass == twoHmaces) then-- working only on x64 client :(
             -- polearms/staves -> staves/polearms/2h
-            if (mainItemSubClass == polearms or mainItemSubClass == staves)
+            elseif (mainItemSubClass == polearms or mainItemSubClass == staves)
               and (itemSubClass ~= staves and itemSubClass ~= polearms and itemSubClass ~= twoHswords and itemSubClass ~= twoHaxes and itemSubClass ~= twoHmaces) then
                 useTable[location] = nil;
             -- daggers/fists -> 1h
@@ -359,21 +362,23 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             end
 
             if (itemSubClass == BATTLE_PET_SOURCE_2 or itemSubClass == QUESTS_LABEL) or -- en/ru
-            mies ~= equipSlot then
+            mies ~= equipSlot and itemId ~= 3934 then
                 useTable[location] = nil;
             end
         end
     end
 
     -- clean from incorrect slots (x64 client)
-    for location, itemId in pairs(useTable) do
-        local _, _, _, _, _, _, itemSubClass, _, itemSlot = GetItemInfo(itemId);
-        if equipLocation[itemSlot] ~= inventorySlot and inventorySlot == 17 then 
-            if itemSubClass == guns or itemSubClass == bows or itemSubClass == crossbows then
-                useTable[location] = nil
+    if Is64BitClient() then
+        for location, itemId in pairs(useTable) do
+            local _, _, _, _, _, _, itemSubClass, _, itemSlot = GetItemInfo(itemId);
+            if equipLocation[itemSlot] ~= inventorySlot and inventorySlot == 17 then
+                if itemSubClass == guns or itemSubClass == bows or itemSubClass == crossbows then
+                    useTable[location] = nil
+                end
+            elseif equipLocation[mies] == 16 and (itemSubClass == guns or itemSubClass == bows or itemSubClass == crossbows) then useTable[location] = nil
+            elseif equipLocation[itemSlot] ~= inventorySlot and (itemSubClass ~= guns and itemSubClass ~= bows and itemSubClass ~= crossbows and itemId ~= 3934) then useTable[location] = nil 
             end
-        elseif equipLocation[mies] == 16 and (itemSubClass == guns or itemSubClass == bows or itemSubClass == crossbows) then useTable[location] = nil
-        elseif equipLocation[itemSlot] ~= inventorySlot and (itemSubClass ~= guns and itemSubClass ~= bows and itemSubClass ~= crossbows) then useTable[location] = nil 
         end
     end
 
