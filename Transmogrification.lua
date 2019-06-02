@@ -45,6 +45,7 @@ else -- only enUS/enGB yet...
 
     alert = "Warning! Your transmogrify interface files are outdated!\nUpdate files by running launcher"
 end
+local cosmeticIds, cosmetic = {105741, 105742, 105743, 105744, 105745, 105746, 105747, 105748, 95474, 95475, 97213, 97901}
 
 -- alert users to update addon
 local notifyUser = CreateFrame"Frame"
@@ -52,7 +53,7 @@ notifyUser:RegisterEvent"CHAT_MSG_ADDON"
 notifyUser:RegisterEvent"PLAYER_ENTERING_WORLD"
 notifyUser:RegisterEvent"PLAYER_ENTERING_BATTLEGROUND"
 
-local PWT_VERSION_INFO = 1.2;
+local PWT_VERSION_INFO = 1.21;
 local NEWVERSION = false;
 RegisterAddonMessagePrefix"PWTVerInfo"
 
@@ -198,7 +199,7 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
     local invItemId = GetInventoryItemID("player", inventorySlot)
     if not invItemId then return end
 
-    local _, _, _, _, _, _, mainItemSubClass, _, mies = GetItemInfo(invItemId);
+    local _, _, _, _, _, mainItemClass, mainItemSubClass, _, mies = GetItemInfo(invItemId);
 
     if mainItemSubClass == nil then return end
 
@@ -240,6 +241,7 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
         for location, itemId in pairs(useTable) do
             if itemId == invItemId then useTable[location] = nil; end
             local _, link, itemRarity, _, _, _, itemSubClass, _, equipSlot, texture = GetItemInfo(itemId);
+            for _, id in pairs(cosmeticIds) do if itemId == id then cosmetic = true break else cosmetic = nil end end
 
             -- We need to check tooltip of items to tmog if we are able to wear
             --i.e it will hide armor from another classes but will show weapons that are unable to wear
@@ -276,9 +278,9 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
             GameTooltip:Hide()
 
             -- Hide lower armor type items and legendary items
-            if ((mainItemSubClass == plate or mainItemSubClass == mail or mainItemSubClass == leather or mainItemSubClass == cloth) and itemSubClass ~= mainItemSubClass)
-              or mainItemSubClass == daggers and (itemSubClass ~= mainItemSubClass)
-              or mainItemSubClass == shields and (itemSubClass ~= mainItemSubClass)
+            if ((mainItemSubClass == plate or mainItemSubClass == mail or mainItemSubClass == leather or mainItemSubClass == cloth) and itemSubClass ~= mainItemSubClass and not cosmetic)
+              or (mainItemSubClass == daggers and (itemSubClass ~= mainItemSubClass))
+              or (mainItemSubClass == shields and (itemSubClass ~= mainItemSubClass))
               or ((itemSubClass == polearms or itemSubClass == staves) and (itemSubClass ~= mainItemSubClass and mainItemSubClass ~= staves and mainItemSubClass ~= polearms))
               or ((mainItemSubClass == polearms or mainItemSubClass == staves) and (mainItemSubClass ~= itemSubClass and itemSubClass ~= staves and itemSubClass ~= polearms))
               or strfind(texture:lower(), 'fishing')
@@ -292,7 +294,8 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
     else
         for location, itemId in pairs(useTable) do
             if itemId == invItemId then useTable[location] = nil; end
-            local _, _, _, _, _, _, itemSubClass, _, equipSlot = GetItemInfo(itemId);
+            local _, _, _, _, _, itemClass, itemSubClass, _, equipSlot = GetItemInfo(itemId);
+            -- for _, id in pairs(cosmeticIds) do if itemId == id then cosmetic = true break else cosmetic = nil end end
 
             -- Allow robes trans into chests and vice versa
             if mies == "INVTYPE_ROBE" and equipSlot == "INVTYPE_CHEST" then
