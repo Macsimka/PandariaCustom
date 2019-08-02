@@ -53,7 +53,7 @@ notifyUser:RegisterEvent"CHAT_MSG_ADDON"
 notifyUser:RegisterEvent"PLAYER_ENTERING_WORLD"
 notifyUser:RegisterEvent"PLAYER_ENTERING_BATTLEGROUND"
 
-local PWT_VERSION_INFO = 1.21;
+local PWT_VERSION_INFO = 1.22;
 local NEWVERSION = false;
 RegisterAddonMessagePrefix"PWTVerInfo"
 
@@ -181,13 +181,14 @@ local function AddEquippableItem(useTable, mies, inventorySlot, container, slot)
     if not customEnabled and equipSlot ~= mies then
         if itemSubClass == guns or itemSubClass == bows or itemSubClass == crossbows then -- ranged fix
             if equipLocation[mies] == 17 then useTable[location] = nil return end
-        elseif inventorySlot == 17 or inventorySlot == 16 then -- offhand fix
+        elseif (inventorySlot == 17 or inventorySlot == 16) and itemID ~= 3934 then -- offhand fix
             useTable[location] = nil
             return
         end
     end
 
-    if (equipLocation[equipSlot] == inventorySlot or equipLocation[equipSlot] == 16 or equipLocation[equipSlot] == 18) and useTable[location] == nil then
+    if ((equipLocation[equipSlot] == inventorySlot or equipLocation[equipSlot] == 16 or equipLocation[equipSlot] == 18) or 
+	(equipLocation[equipSlot] == 17 and inventorySlot == 16)) and useTable[location] == nil then
         useTable[location] = itemID;
 	end
 end
@@ -312,6 +313,12 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
                 equipSlot = "INVTYPE_WEAPON"
             elseif mies == "INVTYPE_2HWEAPON" and equipSlot == "INVTYPE_WEAPON" then
                 equipSlot = "INVTYPE_2HWEAPON"
+            -- Allow offhands trans into shields and vice versa
+            elseif mies == "INVTYPE_HOLDABLE" and equipSlot == "INVTYPE_SHIELD" then
+                equipSlot = "INVTYPE_HOLDABLE"
+            elseif mies == "INVTYPE_SHIELD" and equipSlot == "INVTYPE_HOLDABLE" then
+                equipSlot = "INVTYPE_SHIELD"
+            end
             -- Allow main hands trans into one hands and vice versa
             if Is64BitClient() then -- working only on x64 client :(
                 if mies == "INVTYPE_2HWEAPON" and itemId == 3934 then
@@ -326,17 +333,10 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
                     equipSlot = "INVTYPE_WEAPONOFFHAND"
                 end
             end
-            -- Allow offhands trans into shields and vice versa
-            elseif mies == "INVTYPE_HOLDABLE" and equipSlot == "INVTYPE_SHIELD" then
-                equipSlot = "INVTYPE_HOLDABLE"
-            elseif mies == "INVTYPE_SHIELD" and equipSlot == "INVTYPE_HOLDABLE" then
-                equipSlot = "INVTYPE_SHIELD"
-            end
 
             -- Hide weapons that not allowed to tmog
-            if Is64BitClient() and itemId == 3934 and (mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces or mainItemSubClass == twoHswords or mainItemSubClass == twoHaxes or mainItemSubClass == twoHmaces) then-- working only on x64 client :(
-			elseif itemId == 3934 then
-				useTable[location] = nil;
+            if Is64BitClient() and itemId == 3934 then if (mainItemSubClass == oneHswords or mainItemSubClass == oneHaxes or mainItemSubClass == oneHmaces or mainItemSubClass == twoHswords or mainItemSubClass == twoHaxes or mainItemSubClass == twoHmaces or mainItemSubClass == polearms or mainItemSubClass == staves) then-- working only on x64 client :(
+			else useTable[location] = nil; end
             -- polearms/staves -> staves/polearms/2h
             elseif (mainItemSubClass == polearms or mainItemSubClass == staves)
               and (itemSubClass ~= staves and itemSubClass ~= polearms and itemSubClass ~= twoHswords and itemSubClass ~= twoHaxes and itemSubClass ~= twoHmaces) then
@@ -382,7 +382,8 @@ hooksecurefunc('GetInventoryItemsForSlot', function(inventorySlot, useTable, tra
                     useTable[location] = nil
                 end
             elseif equipLocation[mies] == 16 and (itemSubClass == guns or itemSubClass == bows or itemSubClass == crossbows) then useTable[location] = nil
-            elseif equipLocation[itemSlot] ~= inventorySlot and (itemSubClass ~= guns and itemSubClass ~= bows and itemSubClass ~= crossbows and itemId ~= 3934) then useTable[location] = nil 
+            elseif equipLocation[itemSlot] == 17 and inventorySlot == 16 then
+            elseif equipLocation[itemSlot] ~= inventorySlot and (itemSubClass ~= guns and itemSubClass ~= bows and itemSubClass ~= crossbows and itemId ~= 3934) then useTable[location] = nil
             end
         end
     end
